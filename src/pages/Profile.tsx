@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 import { BottomNav } from "@/components/BottomNav";
 import { GlassCard } from "@/components/GlassCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -9,6 +9,7 @@ import { ProfileEditDialog } from "@/components/ProfileEditDialog";
 import { Button } from "@/components/ui/button";
 import { User, Settings, Bell, HelpCircle, LogOut, Palette } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Profile = () => {
   const { user, signOut, loading } = useAuth();
@@ -19,21 +20,50 @@ const Profile = () => {
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
-    } else if (user) {
+    } else if (user && isSupabaseConfigured) {
       fetchProfile();
+    } else if (user && !isSupabaseConfigured) {
+      // Create a basic profile from user data if Supabase is not configured
+      setProfile({
+        display_name: user.email?.split('@')[0] || 'User',
+        email: user.email,
+        avatar_url: null
+      });
     }
   }, [user, loading, navigate]);
 
   const fetchProfile = async () => {
-    if (!user) return;
+    if (!user || !isSupabaseConfigured) return;
     
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    setProfile(data);
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error fetching profile:', error);
+      }
+
+      if (data) {
+        setProfile(data);
+      } else {
+        // Create default profile if none exists
+        setProfile({
+          display_name: user.email?.split('@')[0] || 'User',
+          email: user.email,
+          avatar_url: null
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      setProfile({
+        display_name: user.email?.split('@')[0] || 'User',
+        email: user.email,
+        avatar_url: null
+      });
+    }
   };
 
   if (loading || !user || !profile) {
@@ -57,6 +87,13 @@ const Profile = () => {
 
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6 animate-fade-in">
+        {!isSupabaseConfigured && (
+          <Alert className="bg-yellow-500/10 border-yellow-500/20">
+            <AlertDescription className="text-yellow-600 dark:text-yellow-400">
+              Supabase is not configured. Profile data will not be saved. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.
+            </AlertDescription>
+          </Alert>
+        )}
         {/* User Info */}
         <GlassCard className="text-center space-y-4">
           <Avatar className="w-24 h-24 mx-auto">
