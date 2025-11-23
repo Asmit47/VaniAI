@@ -23,23 +23,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+    // Import isSupabaseConfigured from the client
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    const isConfigured = supabaseUrl && 
+      supabaseAnonKey && 
+      supabaseUrl !== 'https://placeholder.supabase.co' &&
+      supabaseAnonKey !== 'placeholder-key' &&
+      supabaseUrl.startsWith('http');
+    
+    if (!isConfigured) {
+      // Supabase not configured, skip auth initialization
+      console.warn('Supabase not configured - auth features disabled');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Set up auth state listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      );
+
+      // Check for existing session
+      supabase.auth.getSession().then(({ data: { session } }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-      }
-    );
+      }).catch((error) => {
+        console.error('Error getting session:', error);
+        setLoading(false);
+      });
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      return () => {
+        try {
+          subscription.unsubscribe();
+        } catch (error) {
+          console.error('Error unsubscribing:', error);
+        }
+      };
+    } catch (error) {
+      console.error('Error initializing auth:', error);
       setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    }
   }, []);
 
   const signIn = async (email: string, password: string) => {

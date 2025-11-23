@@ -32,9 +32,34 @@ cd <YOUR_PROJECT_NAME>
 # Step 3: Install the necessary dependencies.
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Set up environment variables
+# Copy the example environment file and fill in your API keys
+cp .env.example .env
+# Edit .env with your actual API keys
+
+# Step 5: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
+
+## Environment Variables Setup
+
+Before running the application locally, you need to configure the following environment variables in a `.env` file:
+
+1. **Copy the example file:**
+   ```sh
+   cp .env.example .env
+   ```
+
+2. **Edit `.env` and add your API keys:**
+   - `VITE_GEMINI_API_KEY`: Your Google Gemini API key (required for Mock Interview, Group Discussion, Presentation Practice, and Speech Practice)
+   - `VITE_GEMINI_MODEL`: Gemini model name (default: `gemini-1.5-flash-latest`)
+   - `VITE_ASSEMBLY_API_KEY`: Your AssemblyAI API key (required for audio transcription)
+   - `VITE_AZURE_API_KEY`: Your Azure Text-to-Speech API key (required for voice features)
+   - `VITE_AZURE_REGION`: Azure region (default: `centralindia`)
+   - `VITE_SUPABASE_URL`: Your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+
+**Note:** The application will automatically try both `v1` and `v1beta` API versions for Gemini to ensure compatibility.
 
 **Edit a file directly in GitHub**
 
