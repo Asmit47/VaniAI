@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { GlassCard } from "@/components/GlassCard";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Briefcase, Mic, Play, Square, Volume2, CheckCircle2 } from "lucide-react";
@@ -19,6 +20,7 @@ const MockInterview = () => {
     difficulty: "medium",
     type: "behavioral",
   });
+  const [isCustomRole, setIsCustomRole] = useState(false);
   const [questions, setQuestions] = useState<Array<{ question: string; category: string }>>([]);
   const [answers, setAnswers] = useState<string[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -32,8 +34,7 @@ const MockInterview = () => {
     "Product Manager",
     "Data Analyst",
     "Marketing Manager",
-    "Sales Executive",
-    "HR Professional",
+    "Machine Learning Engineer"
   ];
 
   const difficulties = ["easy", "medium", "hard"];
@@ -68,26 +69,26 @@ Return ONLY a valid JSON array with this exact format (no markdown, no explanati
       console.log("Raw response from Gemini:", raw);
 
       let qs: Array<{ question: string; category: string }> = [];
-      
+
       try {
         // Try to extract JSON from markdown code blocks or raw text
         let jsonText = raw.trim();
-        
+
         // Remove markdown code blocks if present
         const codeBlockMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
         if (codeBlockMatch) {
           jsonText = codeBlockMatch[1].trim();
         }
-        
+
         // Try to find JSON array in the text
         const jsonArrayMatch = jsonText.match(/\[[\s\S]*\]/);
         if (jsonArrayMatch) {
           jsonText = jsonArrayMatch[0];
         }
-        
+
         console.log("Extracted JSON text:", jsonText);
         const parsed = JSON.parse(jsonText);
-        
+
         if (Array.isArray(parsed) && parsed.length > 0) {
           qs = parsed;
           console.log("Successfully parsed questions:", qs);
@@ -97,21 +98,21 @@ Return ONLY a valid JSON array with this exact format (no markdown, no explanati
       } catch (parseError) {
         console.error("JSON parsing failed:", parseError);
         console.log("Falling back to treating response as single question");
-        
+
         // Fallback: treat the entire response as a single question
-        qs = [{ 
-          question: raw.trim(), 
-          category: config.type 
+        qs = [{
+          question: raw.trim(),
+          category: config.type
         }];
       }
-      
+
       if (!qs.length || !qs[0].question) {
         throw new Error("No valid questions generated");
       }
-      
+
       setQuestions(qs);
       setStep("interview");
-      
+
       toast({
         title: "Interview Started",
         description: `${qs.length} question(s) loaded`,
@@ -120,7 +121,7 @@ Return ONLY a valid JSON array with this exact format (no markdown, no explanati
       // Speak first question
       console.log("Speaking first question:", qs[0].question);
       await speakQuestion(qs[0].question);
-      
+
     } catch (error) {
       console.error('Error generating questions:', error);
       toast({
@@ -138,7 +139,7 @@ Return ONLY a valid JSON array with this exact format (no markdown, no explanati
       console.error("Cannot speak empty question");
       return;
     }
-    
+
     setIsSpeaking(true);
     try {
       console.log("Speaking question:", question.substring(0, 50) + "...");
@@ -284,18 +285,47 @@ Return ONLY a valid JSON array with this exact format (no markdown, no explanati
                 {jobRoles.map((role) => (
                   <button
                     key={role}
-                    onClick={() => setConfig({ ...config, role })}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      config.role === role
-                        ? "border-primary bg-primary/10 shadow-lg scale-105"
-                        : "border-border bg-white/40 hover:bg-white/60"
-                    }`}
+                    onClick={() => {
+                      setIsCustomRole(false);
+                      setConfig({ ...config, role });
+                    }}
+                    className={`p-4 rounded-xl border-2 transition-all ${!isCustomRole && config.role === role
+                      ? "border-primary bg-primary/10 shadow-lg scale-105"
+                      : "border-border bg-white/40 hover:bg-white/60"
+                      }`}
                   >
                     <Briefcase className="w-6 h-6 mx-auto mb-2 text-primary" />
                     <p className="text-sm font-medium text-foreground">{role}</p>
                   </button>
                 ))}
+                <button
+                  onClick={() => {
+                    setIsCustomRole(true);
+                    setConfig({ ...config, role: "" });
+                  }}
+                  className={`p-4 rounded-xl border-2 transition-all ${isCustomRole
+                    ? "border-primary bg-primary/10 shadow-lg scale-105"
+                    : "border-border bg-white/40 hover:bg-white/60"
+                    }`}
+                >
+                  <Briefcase className="w-6 h-6 mx-auto mb-2 text-primary" />
+                  <p className="text-sm font-medium text-foreground">Custom</p>
+                </button>
               </div>
+
+              {isCustomRole && (
+                <div className="mt-4 animate-fade-in">
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Enter Job Role
+                  </label>
+                  <Input
+                    placeholder="e.g. Senior React Developer"
+                    value={config.role}
+                    onChange={(e) => setConfig({ ...config, role: e.target.value })}
+                    className="bg-white/50 border-border focus:ring-primary"
+                  />
+                </div>
+              )}
             </GlassCard>
 
             {/* Difficulty Level */}
@@ -306,11 +336,10 @@ Return ONLY a valid JSON array with this exact format (no markdown, no explanati
                   <button
                     key={level}
                     onClick={() => setConfig({ ...config, difficulty: level })}
-                    className={`flex-1 px-4 py-3 rounded-xl border-2 capitalize transition-all ${
-                      config.difficulty === level
-                        ? "border-primary bg-primary/10 shadow-lg"
-                        : "border-border bg-white/40 hover:bg-white/60"
-                    }`}
+                    className={`flex-1 px-4 py-3 rounded-xl border-2 capitalize transition-all ${config.difficulty === level
+                      ? "border-primary bg-primary/10 shadow-lg"
+                      : "border-border bg-white/40 hover:bg-white/60"
+                      }`}
                   >
                     {level}
                   </button>
@@ -326,11 +355,10 @@ Return ONLY a valid JSON array with this exact format (no markdown, no explanati
                   <button
                     key={type}
                     onClick={() => setConfig({ ...config, type })}
-                    className={`px-4 py-3 rounded-xl border-2 capitalize transition-all ${
-                      config.type === type
-                        ? "border-primary bg-primary/10 shadow-lg"
-                        : "border-border bg-white/40 hover:bg-white/60"
-                    }`}
+                    className={`px-4 py-3 rounded-xl border-2 capitalize transition-all ${config.type === type
+                      ? "border-primary bg-primary/10 shadow-lg"
+                      : "border-border bg-white/40 hover:bg-white/60"
+                      }`}
                   >
                     {type}
                   </button>
@@ -433,7 +461,7 @@ Return ONLY a valid JSON array with this exact format (no markdown, no explanati
                   </span>
                 </div>
                 <div className="h-2 bg-white/50 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500"
                     style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
                   />
