@@ -26,13 +26,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Import isSupabaseConfigured from the client
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    const isConfigured = supabaseUrl && 
-      supabaseAnonKey && 
+
+    const isConfigured = supabaseUrl &&
+      supabaseAnonKey &&
       supabaseUrl !== 'https://placeholder.supabase.co' &&
       supabaseAnonKey !== 'placeholder-key' &&
       supabaseUrl.startsWith('http');
-    
+
     if (!isConfigured) {
       // Supabase not configured, skip auth initialization
       console.warn('Supabase not configured - auth features disabled');
@@ -94,11 +94,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     try {
+      const redirectUrl = `${import.meta.env.VITE_SITE_URL}/dashboard`;
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: redirectUrl,
           data: {
             display_name: displayName,
           },
@@ -121,10 +122,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
+      const redirectUrl = `${import.meta.env.VITE_SITE_URL}/dashboard`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: redirectUrl,
         },
       });
       if (error) throw error;
